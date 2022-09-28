@@ -1,0 +1,30 @@
+wandb_version: 1
+
+^_ignored:
+  desc: null
+  value: '[]'
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.12.21
+    code_path: code/autoencoder.py
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: true
+    python_version: 3.7.13
+    start_time: 1664221914
+    t:
+      1:
+      - 1
+      - 5
+      - 53
+      - 55
+      3:
+      - 13
+      - 19
+      - 35
+      4: 3.7.13
+      5: 0.12.21
+      8:
+      - 2
+      - 6
