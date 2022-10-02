@@ -1,0 +1,22 @@
+{
+    "os": "Linux-5.15.0-46-generic-x86_64-with-Ubuntu-22.04-jammy",
+    "python": "3.7.13",
+    "heartbeatAt": "2022-09-26T19:51:55.800115",
+    "startedAt": "2022-09-26T19:51:54.744990",
+    "docker": null,
+    "cpu_count": 8,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/ionelia/projects/openproblems-comp/lia-local-folder/autoencoder/autoencoder.py",
+    "codePath": "autoencoder.py",
+    "git": {
+        "remote": "git@github.com:ioneliabuzatu/autoencoder.git",
+        "commit": "9fd83c66cac641e2cfe3abb637d8dcb837104c4e"
+    },
+    "email": "buzatuionelia@gmail.com",
+    "root": "/home/ionelia/projects/openproblems-comp/lia-local-folder/autoencoder",
+    "host": "PC",
+    "username": "ionelia",
+    "executable": "/home/ionelia/venvs/grn-control/bin/python"
+}

@@ -1,0 +1,1 @@
+{"metrics/mse_steps": 67461.203125, "step": 4, "_timestamp": 1664365697, "_runtime": 26, "_step": 6, "metrics/mse_epoch": 75039.6765625, "epoch": 0, "val/mse": [64964.7265625, 64817.0234375, 64922.68359375, 64972.5234375, 64702.8984375], "_wandb": {"runtime": 27}}
