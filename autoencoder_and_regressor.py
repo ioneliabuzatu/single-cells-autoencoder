@@ -159,7 +159,7 @@ for epoch in range(1, n_epochs):
         protein_predictions = regressor(reduced_x)
         loss_regressor = loss_fn_regressor(protein_predictions, y)
         pearson_loss_regressor = cos(y - y.mean(dim=1, keepdim=True), protein_predictions - protein_predictions.mean(dim=1, keepdim=True)).mean()
-        pearson_epoch_regressor.append(pearson_loss_regressor)
+        pearson_epoch_regressor.append(pearson_loss_regressor.item())
         loss_regressor.backward()
         optimizer_regressor.step()
         losses_epoch_regressor.append(loss_regressor.item())
