@@ -40,7 +40,7 @@ buddy = experiment_buddy.deploy(
         'project': 'kaggle',
         'reinit': False
     },
-    wandb_run_name=f"SGD#COMP{config.latent_space}b{config.batch_size}",
+    wandb_run_name=f"adam#COMP{config.latent_space}b{config.batch_size}",
     extra_modules=["cuda/11.1/nccl/2.10", "cudatoolkit/11.1", "cuda/11.1/cudnn/8.1"]
 )
 
@@ -119,9 +119,11 @@ loss_fn_regressor = nn.MSELoss(reduction='sum')
 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
 
 optimizer_autoencoder = optim.Adam(autoencoder.parameters())
-# optimizer_regressor = optim.Adam(regressor.parameters())
+# optimizer_encoder = optim.Adam(autoencoder.parameters())
+# optimizer_decoder = optim.Adam(autoencoder.parameters())
+optimizer_regressor = optim.Adam(regressor.parameters())
 # optimizer_autoencoder = optim.SGD(autoencoder.parameters(), lr=0.01, momentum=0.95)
-optimizer_regressor = optim.SGD(regressor.parameters(), lr=0.01, momentum=0.95)
+# optimizer_regressor = optim.SGD(regressor.parameters(), lr=0.01, momentum=0.95)
 
 # optimizer_total = optim.Adam(list(autoencoder.parameters() + regressor.parameters()))
 
@@ -159,7 +161,7 @@ for epoch in range(1, n_epochs):
         protein_predictions = regressor(reduced_x)
         loss_regressor = loss_fn_regressor(protein_predictions, y)
         pearson_loss_regressor = cos(y - y.mean(dim=1, keepdim=True), protein_predictions - protein_predictions.mean(dim=1, keepdim=True)).mean()
-        pearson_epoch_regressor.append(pearson_loss_regressor)
+        pearson_epoch_regressor.append(pearson_loss_regressor.item())
         loss_regressor.backward()
         optimizer_regressor.step()
         losses_epoch_regressor.append(loss_regressor.item())
