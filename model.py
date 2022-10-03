@@ -18,17 +18,14 @@ class Autoencoder(nn.Module):
     def __init__(self, in_shape, enc_shape):
         super(Autoencoder, self).__init__()
 
-        self.encode = nn.Sequential(
+        self.encoder = nn.Sequential(
             nn.Linear(in_shape, 500),
-            # nn.SELU(True),
-            # nn.Dropout(0.2),
-            # nn.Linear(500, 128),
             nn.SELU(True),
             nn.Dropout(0.2),
             nn.Linear(500, enc_shape),
         )
-        self.decode = nn.Sequential(
-            nn.BatchNorm1d(enc_shape),
+        self.decoder = nn.Sequential(
+            # nn.BatchNorm1d(enc_shape),
             nn.Linear(enc_shape, 500),
             nn.SELU(True),
             nn.Dropout(0.2),
@@ -36,8 +33,8 @@ class Autoencoder(nn.Module):
         )
 
     def forward(self, x):
-        x = self.encode(x)
-        x = self.decode(x)
+        x = self.encoder(x)
+        x = self.decoder(x)
         return x
     
     
@@ -50,7 +47,7 @@ class AutoencoderV2(nn.Module):
     def __init__(self, in_shape, enc_shape):
         super(AutoencoderV2, self).__init__()
 
-        self.encode = nn.Sequential(
+        self.encoder = nn.Sequential(
             nn.Linear(in_shape, 10012),
             # nn.SELU(inplace=True),
             nn.SELU(),
@@ -69,7 +66,7 @@ class AutoencoderV2(nn.Module):
             nn.Dropout(0.2, inplace=True),
             nn.Linear(512, enc_shape),
         )
-        self.decode = nn.Sequential(
+        self.decoder = nn.Sequential(
             # nn.BatchNorm1d(enc_shape),
             nn.Linear(enc_shape, 512),
             # nn.SELU(inplace=True),
@@ -91,8 +88,8 @@ class AutoencoderV2(nn.Module):
         )
 
     def forward(self, x):
-        x = self.encode(x)
-        x = self.decode(x)
+        x = self.encoder(x)
+        x = self.decoder(x)
         return x
     
     
@@ -109,9 +106,6 @@ class Regressor(nn.Module):
             nn.Linear(in_shape, 512),
             nn.SELU(True),
             nn.Dropout(0.2),
-            # nn.Linear(500, 64),
-            # nn.SELU(True),
-            # nn.Dropout(0.2),
             nn.Linear(512, out_shape),
         )
 
