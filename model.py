@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 from sklearn.datasets import make_swiss_roll
 from sklearn.preprocessing import MinMaxScaler
+from torch.nn import functional as F
 
 
 class Autoencoder(nn.Module):
@@ -18,26 +19,24 @@ class Autoencoder(nn.Module):
     def __init__(self, in_shape, enc_shape):
         super(Autoencoder, self).__init__()
 
-        self.encode = nn.Sequential(
-            nn.Linear(in_shape, 500),
-            # nn.SELU(True),
-            # nn.Dropout(0.2),
-            # nn.Linear(500, 128),
+        self.encoder = nn.Sequential(
+            nn.Linear(in_shape, 5000),
+            nn.BatchNorm1d(5000),
             nn.SELU(True),
             nn.Dropout(0.2),
-            nn.Linear(500, enc_shape),
+            nn.Linear(5000, enc_shape),
         )
-        self.decode = nn.Sequential(
-            nn.BatchNorm1d(enc_shape),
-            nn.Linear(enc_shape, 500),
+        self.decoder = nn.Sequential(
+            nn.Linear(enc_shape, 5000),
+            nn.BatchNorm1d(5000),
             nn.SELU(True),
             nn.Dropout(0.2),
-            nn.Linear(500, in_shape)
+            nn.Linear(5000, in_shape)
         )
 
     def forward(self, x):
-        x = self.encode(x)
-        x = self.decode(x)
+        x = self.encoder(x)
+        x = self.decoder(x)
         return x
     
     
@@ -50,26 +49,22 @@ class AutoencoderV2(nn.Module):
     def __init__(self, in_shape, enc_shape):
         super(AutoencoderV2, self).__init__()
 
-        self.encode = nn.Sequential(
+        self.encoder = nn.Sequential(
             nn.Linear(in_shape, 10012),
-            # nn.SELU(inplace=True),
             nn.SELU(),
             nn.Dropout(0.2, inplace=True),
             nn.Linear(10012, 5012),
-            # nn.SELU(inplace=True),
             nn.SELU(),
             nn.Dropout(0.2, inplace=True),
             nn.Linear(5012, 1012),
-            # nn.SELU(inplace=True),
             nn.SELU(),
             nn.Dropout(0.2, inplace=True),
             nn.Linear(1012, 512),
-            # nn.SELU(inplace=True),
             nn.SELU(),
             nn.Dropout(0.2, inplace=True),
             nn.Linear(512, enc_shape),
         )
-        self.decode = nn.Sequential(
+        self.decoder = nn.Sequential(
             # nn.BatchNorm1d(enc_shape),
             nn.Linear(enc_shape, 512),
             # nn.SELU(inplace=True),
@@ -91,8 +86,8 @@ class AutoencoderV2(nn.Module):
         )
 
     def forward(self, x):
-        x = self.encode(x)
-        x = self.decode(x)
+        x = self.encoder(x)
+        x = self.decoder(x)
         return x
     
     
@@ -109,12 +104,67 @@ class Regressor(nn.Module):
             nn.Linear(in_shape, 512),
             nn.SELU(True),
             nn.Dropout(0.2),
-            # nn.Linear(500, 64),
-            # nn.SELU(True),
-            # nn.Dropout(0.2),
             nn.Linear(512, out_shape),
         )
 
     def forward(self, x):
         x = self.regressor(x)
         return x
+    
+    
+class VariationalEncoder(nn.Module):
+    def __init__(self, latent_dims, device):
+        super(VariationalEncoder, self).__init__()
+        self.linear1 = nn.Linear(22050, 512)
+        self.linear2 = nn.Linear(512, latent_dims)
+        self.linear3 = nn.Linear(512, latent_dims)
+
+        self.N = torch.distributions.Normal(0, 1)
+        self.N.loc = self.N.loc.to(device)  # hack to get sampling on the GPU
+        self.N.scale = self.N.scale.to(device)
+        self.kl = 0
+
+    def forward(self, x):
+        x = torch.flatten(x, start_dim=1)
+        x = F.relu(self.linear1(x))
+
+        mu = self.linear2(x)
+        sigma = torch.exp(self.linear3(x))
+        z = mu + sigma*self.N.sample(mu.shape)
+        self.kl = (sigma**2 + mu**2 - torch.log(sigma) - 1/2).sum()
+        return z
+    
+    
+class Decoder(nn.Module):
+    def __init__(self, latent_dims):
+        super(Decoder, self).__init__()
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dims, 512),
+            nn.ReLU(True),
+            nn.Linear(512, 22050)
+        )
+        # z = F.relu(self.linear1(z))
+        # z = torch.sigmoid(self.linear2(z)
+
+        # self._decoder = nn.Sequential(
+        #     nn.Linear(latent_dims, 5000),
+        #     nn.BatchNorm1d(5000),
+        #     nn.SELU(True),
+        #     nn.Dropout(0.2),
+        #     nn.Linear(5000, 22050)
+        # )
+
+    def forward(self, z):
+        z = torch.sigmoid(self.decoder(z))
+        return z
+
+    
+class VariationalAutoencoder(nn.Module):
+    def __init__(self, latent_dims, device):
+        super(VariationalAutoencoder, self).__init__()
+        self.encoder = VariationalEncoder(latent_dims, device)
+        self.decoder = Decoder(latent_dims)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        return self.decoder(z)

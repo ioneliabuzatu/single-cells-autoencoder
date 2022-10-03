@@ -16,9 +16,10 @@ def val(run, epoch, val_loader, device, autoencoder, loss_fn_autoencoder, regres
         for x_id, (x_batch, y_batch) in enumerate(val_loader):
             x = x_batch.to(device)
             y = y_batch.to(device)
-            encoded = autoencoder.encode(x)
-            decoded = autoencoder.decode(encoded)
-            mse_autoencoder = loss_fn_autoencoder(decoded, x).item()
+            encoded = autoencoder.encoder(x)
+            decoded = autoencoder.decoder(encoded)
+            # mse_autoencoder = loss_fn_autoencoder(decoded, x).item()
+            mse_autoencoder = ((x - decoded) ** 2).sum() + autoencoder.encoder.kl
             epoch_val_mse_autoencoder.append(mse_autoencoder)
             del decoded
             del x
