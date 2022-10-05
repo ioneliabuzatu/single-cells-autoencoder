@@ -106,8 +106,8 @@ val_dataset = DatasetWithY(cite_train_inputs, cite_train_targets, train=False, w
 val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, drop_last=False)
 
 # autoencoder = VariationalAutoencoder(config.latent_space, device).to(device)
-# autoencoder = Autoencoder(in_shape=22050, enc_shape=config.latent_space).float().to(device)
-autoencoder = AutoencoderV2(in_shape=22050, enc_shape=config.latent_space).float().to(device)
+autoencoder = Autoencoder(in_shape=22050, enc_shape=config.latent_space).float().to(device)
+# autoencoder = AutoencoderV2(in_shape=22050, enc_shape=config.latent_space).float().to(device)
 regressor = Regressor(in_shape=config.latent_space).float().to(device)
 print("how much does the model weight?")
 os.system('nvidia-smi')
@@ -191,7 +191,7 @@ for epoch in range(1, n_epochs):
     del losses_epoch_regressor
     del pearson_epoch_regressor
 
-    if epoch % 10 == 0:
+    if epoch % 5 == 0:
         scheduler.step()
 
     # ---------------------------------------- eval ------------------------------------------------- #
@@ -206,4 +206,4 @@ for epoch in range(1, n_epochs):
         y_val=y_val
     )
 
-torch.save(autoencoder.state_dict(), f"{base_dir}/checkpoints/comp_autoencoder.pth")
+    torch.save(autoencoder.state_dict(), f"{base_dir}/checkpoints/comp_autoencoder.pth")
