@@ -1,7 +1,8 @@
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
-latent_space = 2
-batch_size = 400
+latent_space = 200
+batch_size = 500
+lr = 0.01
 
 norms_types = {"minmax": lambda x: MinMaxScaler().fit_transform(x), "standardization": None}
 norm = "nope"
