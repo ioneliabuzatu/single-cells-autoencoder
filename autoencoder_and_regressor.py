@@ -1,7 +1,3 @@
-#  TODO
-# combine models both reduction and prediction
-#          first try to have 2 lossses
-#         then merge them together where the loss is just the correlation function
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import getpass
 import logging
@@ -19,7 +15,7 @@ from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 
 import config
-from model import Autoencoder, Regressor, AutoencoderV2
+from model import Autoencoder, Regressor, AutoencoderV2, VariationalAutoencoder
 from utils import correlation_score_fn, DatasetWithY
 from val_utils import val
 
@@ -40,7 +36,7 @@ buddy = experiment_buddy.deploy(
         'project': 'kaggle',
         'reinit': False
     },
-    wandb_run_name=f"SGD#COMP{config.latent_space}b{config.batch_size}",
+    wandb_run_name=f"standardnorm...#COMP{config.latent_space}b{config.batch_size}",
     extra_modules=["cuda/11.1/nccl/2.10", "cudatoolkit/11.1", "cuda/11.1/cudnn/8.1"]
 )
 
@@ -103,13 +99,14 @@ class MyDataset(Dataset):
 
 
 # cite_train_inputs = MinMaxScaler().fit_transform(cite_train_inputs)
-# cite_train_inputs = StandardScaler().fit_transform(cite_train_inputs)
+cite_train_inputs = StandardScaler().fit_transform(cite_train_inputs)
 train_dataset = DatasetWithY(cite_train_inputs, cite_train_targets, train=True, whoami=whoami)
 train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, drop_last=False)
 val_dataset = DatasetWithY(cite_train_inputs, cite_train_targets, train=False, whoami=whoami)
 val_loader = DataLoader(val_dataset, batch_size=10, shuffle=False, drop_last=False)
 
-autoencoder = AutoencoderV2(in_shape=22050, enc_shape=config.latent_space).float().to(device)
+# autoencoder = VariationalAutoencoder(config.latent_space, device).to(device)
+autoencoder = Autoencoder(in_shape=22050, enc_shape=config.latent_space).float().to(device)
 regressor = Regressor(in_shape=config.latent_space).float().to(device)
 print("how much does the model weight?")
 os.system('nvidia-smi')
@@ -118,16 +115,18 @@ loss_fn_regressor = nn.MSELoss(reduction='sum')
 # loss_fn_total = nn.MSELoss(reduction='sum')
 cos = nn.CosineSimilarity(dim=1, eps=1e-6)
 
-optimizer_autoencoder = optim.Adam(autoencoder.parameters())
-# optimizer_regressor = optim.Adam(regressor.parameters())
+optimizer_autoencoder = optim.Adam(autoencoder.parameters(), lr=0.01)
+# optimizer_encoder = optim.Adam(autoencoder.encoder.parameters())
+# optimizer_decoder = optim.Adam(autoencoder.decoder.parameters())
+optimizer_regressor = optim.Adam(regressor.parameters())
 # optimizer_autoencoder = optim.SGD(autoencoder.parameters(), lr=0.01, momentum=0.95)
-optimizer_regressor = optim.SGD(regressor.parameters(), lr=0.01, momentum=0.95)
+# optimizer_regressor = optim.SGD(regressor.parameters(), lr=0.01, momentum=0.95)
 
 # optimizer_total = optim.Adam(list(autoencoder.parameters() + regressor.parameters()))
 
-n_epochs = 20
+n_epochs = 50
 if whoami == 'ionelia':
-    n_epochs = 1
+    n_epochs = 3
 curr_step_train = 0
 
 # val(run, 0, val_loader, device, autoencoder, loss_fn_autoencoder, regressor=regressor,
@@ -146,11 +145,16 @@ for epoch in range(1, n_epochs):
 
         # train autoencoder
         optimizer_autoencoder.zero_grad()
-        reduced_x = autoencoder.encode(x)
-        output = autoencoder.decode(reduced_x)
+        # optimizer_encoder.zero_grad()
+        # optimizer_decoder.zero_grad()
+        reduced_x = autoencoder.encoder(x)
+        output = autoencoder.decoder(reduced_x)
         loss_autoencoder = loss_fn_autoencoder(output, x)
+        # loss_autoencoder = ((x - output) ** 2).sum() + autoencoder.encoder.kl
         loss_autoencoder.backward()
         optimizer_autoencoder.step()
+        # optimizer_encoder.step()
+        # optimizer_decoder.step()
         losses_epoch.append(loss_autoencoder.item())
 
         # train regressor
@@ -159,7 +163,7 @@ for epoch in range(1, n_epochs):
         protein_predictions = regressor(reduced_x)
         loss_regressor = loss_fn_regressor(protein_predictions, y)
         pearson_loss_regressor = cos(y - y.mean(dim=1, keepdim=True), protein_predictions - protein_predictions.mean(dim=1, keepdim=True)).mean()
-        pearson_epoch_regressor.append(pearson_loss_regressor)
+        pearson_epoch_regressor.append(pearson_loss_regressor.item())
         loss_regressor.backward()
         optimizer_regressor.step()
         losses_epoch_regressor.append(loss_regressor.item())
@@ -181,6 +185,8 @@ for epoch in range(1, n_epochs):
     run.log({"train/regressor_mse_epoch": losses_epoch_regressor.mean(), 'epoch': epoch})
     run.log({"train/pearson_regressor": pearson_epoch_regressor.mean(), 'epoch':epoch})
     print(f"train/pearson:{pearson_epoch_regressor.mean():.3f}")
+    lr_autoencoder = optimizer_autoencoder.param_groups[0]["lr"]
+    run.log({"train/lr_autoencoder": lr_autoencoder, 'epoch':epoch})
     del losses_epoch
     del losses_epoch_regressor
     del pearson_epoch_regressor
