@@ -19,6 +19,30 @@ def correlation_score_fn(y_true, y_pred):
     return corr_sum / len(y_true)
 
 
+class MyDataset(Dataset):
+
+    def __init__(self, inputs, train: bool, whoami: str):
+        if type(inputs) == pd.DataFrame: inputs = inputs.values
+
+        if whoami == 'ionelia':
+            if train:
+                x = inputs[:50]
+            else:
+                x = inputs[50:]
+        else:
+            if train:
+                x = inputs[:50_000]
+            else:
+                x = inputs[50_000:]
+
+        self.x = torch.tensor(x, dtype=torch.float32)
+
+    def __len__(self):
+        return len(self.x)
+
+    def __getitem__(self, idx):
+        return self.x[idx]
+
 class DatasetWithY(Dataset):
 
     def __init__(self, inputs, targets, train: bool, whoami: str):
