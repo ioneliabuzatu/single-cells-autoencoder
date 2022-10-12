@@ -1,5 +1,6 @@
 import sys
 
+import numpy
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import getpass
 import logging
@@ -91,8 +92,10 @@ if MAKE_PREDICTIONS:
         x = x_batch.to(device)
         protein_predictions = regressor(x)
         predictions.append(protein_predictions.cpu().detach().numpy())
-    np.savez(filepath_save_predictions, np.array(predictions))
-    print("Predictions saves to {} and now exiting.")
+    print("shape vstack:", np.vstack(predictions).shape)
+    predictions = np.array(predictions)
+    np.save(filepath_save_predictions, predictions)
+    print(f"Predictions saves to 'comp/predictions.npy' with shape {predictions.shape} and now exiting.")
     sys.exit()
 
 # cite_train_inputs = MinMaxScaler().fit_transform(cite_train_inputs)
