@@ -49,20 +49,14 @@ class DatasetWithY(Dataset):
         if type(inputs) == pd.DataFrame: inputs = inputs.values
         if type(targets) == pd.DataFrame: targets = targets.values
 
-        if whoami == 'ionelia':
-            if train:
-                x = inputs[:50]
-                y = targets[:50]
-            else:
-                x = inputs[50:]
-                y = targets[50:]
+        _split = int(len(inputs) * 0.70)
+
+        if train:
+            x = inputs[:_split]
+            y = targets[:_split]
         else:
-            if train:
-                x = inputs[:50_000]
-                y = targets[:50_000]
-            else:
-                x = inputs[50_000:]
-                y = targets[50_000:]
+            x = inputs[_split:]
+            y = targets[_split:]
 
         self.x = torch.tensor(x, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.float32)
