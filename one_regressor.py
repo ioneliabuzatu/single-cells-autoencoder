@@ -1,5 +1,6 @@
 import sys
 
+import numpy
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import getpass
 import logging
@@ -39,7 +40,7 @@ buddy = experiment_buddy.deploy(
         'project': 'kaggle',
         'reinit': False
     },
-    wandb_run_name=f"regressor#COMP{config.latent_space}b{config.batch_size}",
+    wandb_run_name=f"day2and3regressor#COMP{config.latent_space}b{config.batch_size}",
     extra_modules=["cuda/11.1/nccl/2.10", "cudatoolkit/11.1", "cuda/11.1/cudnn/8.1"]
 )
 
@@ -63,7 +64,7 @@ elif whoami == 'ionelia.buzatu':
 df_eval = pd.read_csv(os.path.join(base_dir, 'evaluation_ids.csv'))
 df_metadata = pd.read_csv(os.path.join(base_dir, 'metadata.csv'), index_col='cell_id')
 cite_train_targets = pd.read_hdf(os.path.join(base_dir, "train_cite_targets.h5"))
-df_metadata_cite_train = df_metadata[df_metadata.index.isin(cite_train_targets.index)]
+# df_metadata_cite_train = df_metadata[df_metadata.index.isin(cite_train_targets.index)]
 print("Done loading data.")
 
 if whoami == 'ionelia':
@@ -72,15 +73,16 @@ if whoami == 'ionelia':
     y_val = cite_train_targets[50:50 + 50]
     filepath_save_predictions = f"{base_dir}/predictions.npy"
 else:
-    y_train = cite_train_targets[:50_000]
-    y_val = cite_train_targets[50_000:]
-    filepath_save_predictions = f"{base_dir}/predictions.npy"
+    # split = int(len(cite_train_targets) * 0.70)
+    # y_train = cite_train_targets[:split]
+    # y_val = cite_train_targets[split:]
+    filepath_save_predictions = f"{base_dir}/predictions_day2and3trained.npy"
 
 regressor = Regressor(in_shape=22050, out_shape=140).float().to(device)
 
 MAKE_PREDICTIONS = True
 if MAKE_PREDICTIONS:
-    regressor.load_state_dict(torch.load(f"{base_dir}/checkpoints/comp_one_regressor_to_rule_them_all.pth"))
+    regressor.load_state_dict(torch.load(f"{base_dir}/checkpoints/safe-keeping/comp_day2and3_one_regressor_to_rule_them_all.pth"))
     logging.info(f"generating predictions now....")
     cite_test_inputs = pd.read_hdf(os.path.join(base_dir, "test_cite_inputs.h5"))
     print(f"Loaded test inputs of shape: {cite_test_inputs.shape}")
@@ -91,12 +93,21 @@ if MAKE_PREDICTIONS:
         x = x_batch.to(device)
         protein_predictions = regressor(x)
         predictions.append(protein_predictions.cpu().detach().numpy())
-    np.savez(filepath_save_predictions, np.array(predictions))
-    print("Predictions saves to {} and now exiting.")
+    predictions = np.vstack(predictions)
+    np.save(filepath_save_predictions, predictions)
+    print(f"Predictions saves to 'comp/predictions.npy' with shape {predictions.shape} and now exiting.")
     sys.exit()
 
 # cite_train_inputs = MinMaxScaler().fit_transform(cite_train_inputs)
 # cite_train_inputs = StandardScaler().fit_transform(cite_train_inputs)
+
+cite_train_inputs = cite_train_inputs.loc[df_metadata.loc[cite_train_inputs.index][df_metadata.day!=2].index]
+cite_train_targets = cite_train_targets.loc[df_metadata.loc[cite_train_targets.index][df_metadata.day!=2].index]
+
+split = int(len(cite_train_targets) * 0.70)
+y_train = cite_train_targets[:split]
+y_val = cite_train_targets[split:]
+
 train_dataset = DatasetWithY(cite_train_inputs, cite_train_targets, train=True, whoami=whoami)
 train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, drop_last=False)
 val_dataset = DatasetWithY(cite_train_inputs, cite_train_targets, train=False, whoami=whoami)
@@ -113,7 +124,7 @@ optimizer_regressor = optim.Adam(regressor.parameters(), lr=0.05)
 lambda_scheduler = lambda epoch: 0.85 ** epoch
 scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer_regressor, lr_lambda=lambda_scheduler)
 
-n_epochs = 3
+n_epochs = 50
 if whoami == 'ionelia':
     n_epochs = 3
 curr_step_train = 0
@@ -165,4 +176,4 @@ for epoch in range(1, n_epochs):
         y_val=y_val
     )
 
-torch.save(regressor.state_dict(), f"{base_dir}/checkpoints/comp_one_regressor_to_rule_them_all.pth")
+    torch.save(regressor.state_dict(), f"{base_dir}/checkpoints/comp_day2and3_one_regressor_to_rule_them_all.pth")
